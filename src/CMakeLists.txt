@@ -1,0 +1,6 @@
+SET(SRC_LIST main.cc chatsrv.h chatsrv.cc)
+INCLUDE_DIRECTORIES(../lib)
+LINK_DIRECTORIES(../build/lib)
+ADD_DEFINITIONS(-std=c++11)
+ADD_EXECUTABLE(chatsrv ${SRC_LIST})
+TARGET_LINK_LIBRARIES(chatsrv net)
