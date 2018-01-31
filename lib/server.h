@@ -8,6 +8,7 @@
 #include "loop.h"
 #include "inetaddr.h"
 
+class Buffer;
 
 class Server
 {
@@ -17,7 +18,7 @@ public:
 	void start();
 
 protected:
-	virtual void onMessage(const ConnectionPtr& conn, char *buf);
+	virtual void onMessage(const ConnectionPtr& conn, Buffer &buf);
 	virtual void onConnection(const ConnectionPtr& conn);
 
 	Loop &loop_;

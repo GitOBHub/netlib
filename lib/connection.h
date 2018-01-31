@@ -7,12 +7,13 @@
 #include <stdio.h>
 
 #include "inetaddr.h"
+#include "buffer.h"
 
 class Connection
 {
 public:
 	Connection(int no, int conn) 
-		: number_(no), connFd_(conn) 
+		: number_(no), connFd_(conn), recvBuf_(conn)
 	{
 		socklen_t localLen = sizeof localAddr_;
 		socklen_t peerLen = sizeof peerAddr_;
@@ -42,9 +43,26 @@ public:
 		return InetAddr(&localAddr_); 
 	}
 
+	void readDataIntoBuffer()
+	{
+		if (recvBuf_.readData() == 0)
+			shutdown();
+	}
+
+	Buffer &getBuffer()	
+	{
+		return recvBuf_;
+	}
+
+	bool isBufferWritable()
+	{
+		return !recvBuf_.isBufferFull();
+	}
+
 private:
 	int number_;
 	int connFd_;
+	Buffer recvBuf_;
 	bool isConnected_ = 1;
 	struct sockaddr_in peerAddr_;
 	struct sockaddr_in localAddr_;

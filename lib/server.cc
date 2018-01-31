@@ -21,9 +21,9 @@ Server::Server(Loop &lp, const InetAddr &addr)
 }
 
 
-void Server::onMessage(const ConnectionPtr& conn, char *buf)
+void Server::onMessage(const ConnectionPtr& conn, Buffer &buf)
 {
-	ssize_t nrecv;
+	ssize_t nrecv = 4;
 	int connFd = conn->getConnFd();
 	
 //	int flag = ::fcntl(connFd, F_GETFL, 0);
@@ -33,9 +33,19 @@ void Server::onMessage(const ConnectionPtr& conn, char *buf)
 		std::cerr << "Signal() system call error: " 
 				  << strerror(errno) << std::endl;
 
-	if ( ( nrecv = ::recv(connFd, buf, BUFSIZ, 0)) > 0 ) 
+	while (buf.readableSize() >= 4)
 	{
-		ssize_t nsend = ::send(connFd, buf, nrecv, 0);
+		std::string msg = buf.retrieveData(4);
+
+		int i = 0;
+		char sendBuf[5];
+		for (char c : msg)
+		{
+			sendBuf[i++] = c;
+		}
+		sendBuf[i] = '\n';
+
+		ssize_t nsend = ::send(connFd, sendBuf, 5, 0);
 		if (nsend == -1)
 		{
 			if (errno == EPIPE)
@@ -52,10 +62,6 @@ void Server::onMessage(const ConnectionPtr& conn, char *buf)
 	  				   << conn->getLocalAddr().toAddrStr() << " - Recv " 
 					   << nrecv << (nrecv == 1 ? " byte, Send " : " bytes, Send ")
 					   << nsend << (nsend == 1 ? " byte" : " bytes") << std::endl;
-	}
-	else 
-	{
-		conn->shutdown();
 	}
 }
 

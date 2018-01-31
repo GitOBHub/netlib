@@ -1,4 +1,4 @@
-SET (LIB_SRC loop.cc server.cc connection.h inetaddr.h)
+SET (LIB_SRC loop.cc server.cc connection.h inetaddr.h buffer.h buffer.cc)
 ADD_DEFINITIONS(-std=c++11)
 ADD_LIBRARY(net_static STATIC ${LIB_SRC})
 ADD_LIBRARY(net_shared SHARED ${LIB_SRC})
