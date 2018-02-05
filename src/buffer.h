@@ -23,8 +23,12 @@ public:
 	bool isBufferFull();
 	int readData();
 	int readableSize();
+	const char *peek() const;
+	const char *findCRLF(const char *start) const;
+	const char *findCRLF() const;
 	std::string retrieveAllData();
-	std::string retrieveData(int);
+	std::string retrieveData(int len);
+	std::string retrieveUntil(const char *end);
 
 private:
 	int connFd_;

@@ -16,12 +16,11 @@ public:
 	ChatSrv(Loop &lp, const InetAddr &addr);
 
 private:
-//	void onMessage(const ConnectionPtr& conn, Buffer &buf) override;
+	void onMessage(const ConnectionPtr& conn, Buffer &buf) override;
 //	void onConnection(const ConnectionPtr& conn) override;
 	void print();
 
 	time_t startTime_ = 0;
-	size_t nrecv_ = 0;
 };
 
 #endif	//CHATSRV_H

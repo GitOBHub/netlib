@@ -1,6 +1,4 @@
-#include "server.h"
-#include "loop.h"
-#include "inetaddr.h"
+#include <server.h>
 
 #include <unistd.h>
 #include <sys/socket.h>
@@ -10,8 +8,6 @@
 
 #include <functional>
 #include <iostream>
-
-using namespace std::placeholders;
 
 Server::Server(Loop &lp, const InetAddr &addr)
 	: loop_(lp), listenAddr_(addr)
@@ -29,39 +25,12 @@ void Server::onMessage(const ConnectionPtr& conn, Buffer &buf)
 //	int flag = ::fcntl(connFd, F_GETFL, 0);
 //	::fcntl(connFd, F_SETFL, flag | O_NONBLOCK);
 
-	if (::signal(SIGPIPE, SIG_IGN) == SIG_ERR)
-		std::cerr << "Signal() system call error: " 
-				  << strerror(errno) << std::endl;
-
 	while (buf.readableSize() >= 4)
 	{
 		std::string msg = buf.retrieveData(4);
 
-		int i = 0;
-		char sendBuf[5];
-		for (char c : msg)
-		{
-			sendBuf[i++] = c;
-		}
-		sendBuf[i] = '\n';
-
-		ssize_t nsend = ::send(connFd, sendBuf, 5, 0);
-		if (nsend == -1)
-		{
-			if (errno == EPIPE)
-			{
-				std::cout << "Connection#" << conn->getConnNo() << " - " 
-						  << conn->getPeerAddr().toAddrStr() << " -> " 
-						  << conn->getLocalAddr().toAddrStr() << " - Recv RST" 
-						  << " - Error: Broken pipe" << std::endl;
-				conn->shutdown();
-			}
-		}
-		else std::cout << "Connection#" << conn->getConnNo() << " - " 
-					   << conn->getPeerAddr().toAddrStr() << " -> " 
-	  				   << conn->getLocalAddr().toAddrStr() << " - Recv " 
-					   << nrecv << (nrecv == 1 ? " byte, Send " : " bytes, Send ")
-					   << nsend << (nsend == 1 ? " byte" : " bytes") << std::endl;
+		msg.append("\n");
+		conn->send(msg);
 	}
 }
 

@@ -7,7 +7,7 @@
 
 #include <iostream>
 
-#include "loop.h"
+#include <loop.h>
 
 Loop::Loop()
 {
@@ -61,27 +61,6 @@ void Loop::loop()
 		
 	for (;;)
 	{
-/*		for (auto connPtr : connSet_)
-		{
-			int connFd = connPtr_->getConnFd();
-			if (connPtr->isBufferWritable())
-			{
-				ev_.data.fd = connFd;
-				ev_.events = EPOLLIN;
-				if (::epoll_ctl(epollFd, EPOLL_CTL_MOD, connFd, &ev_) == -1)
-					std::cerr << "epoll_ctl: connFd - " 
-							  << strerror(errno) << std::endl;
-			}
-			else 
-			{	
-				ev_.data.fd = connFd;
-				ev_.events = 0;
-				if (::epoll_ctl(epollFd, EPOLL_CTL_MOD,	connFd, &ev_) == -1)
-					std::cerr << "epoll_ctl: EPOLL_CTL_DEL - "
-							  << strerror(errno) << std::endl;
-			}
-		}*/
-
 		nready = ::epoll_wait(epollFd, events_, maxEvents, -1);
 		if (nready == -1)
 			std::cerr << "epoll_wait: " 

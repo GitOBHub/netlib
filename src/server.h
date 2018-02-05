@@ -5,8 +5,10 @@
 
 #include <netdb.h>
 
-#include "loop.h"
-#include "inetaddr.h"
+#include <loop.h>
+#include <inetaddr.h>
+
+using namespace std::placeholders;
 
 class Buffer;
 

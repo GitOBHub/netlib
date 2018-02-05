@@ -1,0 +1,5 @@
+SET(SRC_LIST client.cc main.cc)
+ADD_EXECUTABLE(roundtrip_client ${SRC_LIST})
+ADD_EXECUTABLE(roundtrip_server roundtrip.cc)
+TARGET_LINK_LIBRARIES(roundtrip_client libnet.so)
+TARGET_LINK_LIBRARIES(roundtrip_server libnet.so)
