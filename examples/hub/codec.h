@@ -7,8 +7,7 @@
 class Codec
 {
 public:
-	typedef std::function<void (const ConnectionPtr &,
-								Buffer &)> MessageCallback;
+	typedef std::function<void(const ConnectionPtr)> MessageCallback;
 	Codec(const MessageCallback &cb)
 		: messageCallback_(cb) { }
 
@@ -18,8 +17,7 @@ public:
 	void onMessage(const ConnectionPtr &conn, Buffer &buf);
 
 private:
-
-	MessageCallback  messageCallback_;
+	MessageCallback messageCallback_;
 	std::string cmd_;
 	std::string topic_;
 	std::string content_;

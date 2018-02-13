@@ -8,12 +8,15 @@
 
 #include <functional>
 #include <iostream>
+#include <cassert>
 
 Server::Server(Loop &lp, const InetAddr &addr)
-	: loop_(lp), listenAddr_(addr)
+	: loop_(lp), 
+	  listenAddr_(addr), 
+	  listenFd_(socket_.fd()),
+	  channel_(listenFd_)
 { 
-	loop_.setMessageCallback(std::bind(&Server::onMessage, this, _1, _2));
-	loop_.setConnectionCallback(std::bind(&Server::onConnection, this, _1));
+
 }
 
 
@@ -40,7 +43,7 @@ void Server::onConnection(const ConnectionPtr &conn)
 		std::cout << "New connection - " << conn->getPeerAddr().toAddrStr()
 			      << " -> " << conn->getLocalAddr().toAddrStr() << std::endl;
 	else
-		std::cout << "Connection#" << conn->getConnNo() << " - "
+		std::cout << "Connection#" << conn->number() << " - "
 	              << conn->getPeerAddr().toAddrStr() << " -> "
 		          << conn->getLocalAddr().toAddrStr()
 		          << " - Done " << std::endl;
@@ -49,11 +52,6 @@ void Server::onConnection(const ConnectionPtr &conn)
 void Server::start()
 {
 	int on = 1;
-
-	if ( (listenFd_ = ::socket(AF_INET, SOCK_STREAM, 0)) == -1) 
-	{
-		//
-	}
 
 	if (::setsockopt(listenFd_, SOL_SOCKET, SO_REUSEADDR, &on, sizeof(on)) == -1)
 	{
@@ -64,7 +62,7 @@ void Server::start()
 	if (::bind(listenFd_, (const struct sockaddr *)sockAddrPtr, 
 			   sizeof(struct sockaddr_in)) == -1)
 	{
-		//
+		perror("system call bind");
 	}
 
 	if (::listen(listenFd_, 10) == -1)
@@ -72,6 +70,44 @@ void Server::start()
 		//
 	}  
 	
-	loop_.setListenSocket(listenFd_, listenAddr_);
+	channel_.setReadCallback(std::bind(&Server::newConnection, this));
+	channel_.enableReading();
+	loop_.updateChannel(&channel_);
+	//std::cerr << "updateChannel OK in Server::start()" << std::endl;
 }
+
+void Server::newConnection()
+{
+	//std::cerr << "Server::newConnection() start" << std::endl;
+	int connFd = ::accept(listenFd_, NULL, NULL);
+	if (connFd == -1)
+	{
+	}
+	auto conn = std::make_shared<Connection>(connFd, loop_);
+	conn->setMessageCallback(messageCallback_ 
+							 ? messageCallback_
+							 : std::bind(&Server::onMessage, this, _1, _2));
+	conn->setConnectionCallback(connectionCallback_
+							    ? connectionCallback_
+								: std::bind(&Server::onConnection, this, _1));
+	conn->setCloseCallback(std::bind(&Server::removeConnection, this, _1));
+	connectionMap_[conn->number()] = conn;
+	if (connectionCallback_)
+	{
+		connectionCallback_(conn);
+	}
+	else
+	{
+		onConnection(conn);
+	}
+}
+
+void Server::removeConnection(const ConnectionPtr &conn)
+{
+	auto n = connectionMap_.erase(conn->number());
+	assert(n == 1);
+//	std::cerr << "After removing conn in Server::removeConnection\n";
+}
+
+	
 

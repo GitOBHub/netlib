@@ -2,20 +2,20 @@
 
 #include <algorithm>
 
-int Buffer::readData()
+ssize_t Buffer::readData()
 {
-	ssize_t nrecv;
-	if ( (nrecv = ::recv(connFd_, inPtr_, 
-						 &buf_[bufsize] - inPtr_, 0)) > 0 )
+	ssize_t nrecv = ::recv(fd_, inPtr_,
+						   &buf_[bufsize] - inPtr_, 0);
+	if (nrecv > 0 )
 	{
 		inPtr_ += nrecv;
 	}
 	else if (nrecv == -1)
 	{
-		std::cerr << "recv: " << strerror(errno) 
+		std::cerr << "recv: " << strerror(errno)
 				  << std::endl;
 	}
-	return nrecv;
+    return nrecv;
 }
 
 int Buffer::readableSize()
@@ -46,15 +46,6 @@ const char *Buffer::findCRLF() const
 			[] (char &c) 
 			{ return (c == '\r' && *(&c + 1) == '\n'); });
 	return (ret != inPtr_ ? ret : NULL);
-
-	/*for (auto &c : buf_)
-	{
-		if (c == '\r' && *(&c + 1) == '\n')
-		{
-			return &c;
-		}
-	}
-	return NULL;*/
 }
 
 std::string Buffer::retrieveUntil(const char *end)
@@ -105,3 +96,12 @@ bool Buffer::isBufferFull()
 {
 	return inPtr_ == &buf_[bufsize];
 }
+
+void Buffer::append(char *data, int len)
+{
+	int n = (len <= &buf_[bufsize] - inPtr_ 
+			 ? len : &buf_[bufsize] - inPtr_);
+	std::copy(data, data + n, inPtr_);
+	inPtr_ += n;
+}
+

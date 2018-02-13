@@ -4,9 +4,11 @@
 
 void Codec::onMessage(const ConnectionPtr &conn, Buffer &buf)
 {
+//	std::cerr << "Codec::onMessage()\n";
 	const char *crlf = buf.findCRLF();
 	if (crlf)
 	{
+//		std::cerr << "crlf found\n";
 		const char *space = std::find(buf.peek(), crlf, ' ');
 		if (space != crlf)
 		{
@@ -30,7 +32,7 @@ void Codec::onMessage(const ConnectionPtr &conn, Buffer &buf)
 				content_ = std::string();
 			}
 			buf.retrieveUntil(crlf + 2);
-			messageCallback_(conn, buf);
+			messageCallback_(conn);
 		}
 		else 
 		{
@@ -38,6 +40,7 @@ void Codec::onMessage(const ConnectionPtr &conn, Buffer &buf)
 			conn->shutdown();
 		}
 	}
+//	else  std::cerr << "crlf unfound\n";
 }
 
 void Codec::parseMsg(std::string &cmd,

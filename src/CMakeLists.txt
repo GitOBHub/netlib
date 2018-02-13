@@ -4,6 +4,9 @@ SET(LIB_SRCS
 	connection.cc 
 	inetaddr.cc
 	buffer.cc
+	poller.cc
+	channel.cc
+	socket.cc
 	)
 
 SET(HEADERS
@@ -12,6 +15,10 @@ SET(HEADERS
 	connection.h
 	inetaddr.h
 	buffer.h
+	channel.h
+	poller.h
+	socket.h
+	noncopyable.h
    )
 
 ADD_LIBRARY(net_static STATIC ${LIB_SRCS})

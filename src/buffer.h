@@ -16,12 +16,11 @@ class Buffer
 {
 public:
 	Buffer(int fd) 
-		: connFd_(fd), 
+		: fd_(fd), 
 		  inPtr_(buf_), 
 		  outPtr_(buf_) { }
 
 	bool isBufferFull();
-	int readData();
 	int readableSize();
 	const char *peek() const;
 	const char *findCRLF(const char *start) const;
@@ -29,9 +28,11 @@ public:
 	std::string retrieveAllData();
 	std::string retrieveData(int len);
 	std::string retrieveUntil(const char *end);
+	void append(char *data, int len);
+	ssize_t readData();
 
 private:
-	int connFd_;
+	int fd_;
 	char buf_[bufsize];
 	char *inPtr_;
 	char *outPtr_;

@@ -1,11 +1,10 @@
 #include "hub.h"
 
 PubSubServer::PubSubServer(Loop &loop, const InetAddr &listenAddr)
-	: Server(loop, listenAddr), 
-	  codec_(std::bind(&PubSubServer::onMessage, this, _1, _2))
+	: server_(loop, listenAddr), 
+	  codec_(std::bind(&PubSubServer::onMessage, this, _1))
 {
-	loop.setMessageCallback(
-		std::bind(&Codec::onMessage, &codec_, _1, _2));
+	server_.setMessageCallback(std::bind(&Codec::onMessage, &codec_, _1, _2));
 }
 
 /*void onConnection(const ConnectionPtr &conn)
@@ -13,7 +12,7 @@ PubSubServer::PubSubServer(Loop &loop, const InetAddr &listenAddr)
 
 }*/
 
-void PubSubServer::onMessage(const ConnectionPtr &conn, Buffer &buf)
+void PubSubServer::onMessage(const ConnectionPtr &conn)
 {
 	std::string cmd;
 	std::string topic;
