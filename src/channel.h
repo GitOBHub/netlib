@@ -3,7 +3,7 @@
 
 #include <functional>
 
-#include <noncopyable.h>
+#include <base.h>
 
 #include <poll.h>
 
@@ -15,7 +15,7 @@ public:
 	typedef std::function<void(void)> ErrorCallback;
 
 	Channel(int fd);
-//	~Channel();
+	~Channel();
 
 	int fd() const { return fd_; } 
 	void setFd(int fd) { fd_ = fd; }
@@ -26,6 +26,9 @@ public:
 	void setIndex(int index) { index_ = index; }
 	bool isNoneEvent() const { return events_ == 0; }
 	void enableReading() { events_ |= POLLIN; }
+	void enableWriting() { events_ |= POLLOUT; }
+	void disableWriting() { events_ &= ~POLLOUT; }
+	bool isWriting() const { return events_ & POLLOUT; }
 
 	void setReadCallback(const ReadCallback &cb)
 	{ readCallback_ = cb; }
@@ -40,6 +43,7 @@ private:
 	int events_ = 0;
 	int revents_ = 0;
 	int index_ = -1;
+	bool eventHandling_ = 0;
 	ReadCallback readCallback_;
 	WriteCallback writeCallback_;
 	ErrorCallback errorCallback_;

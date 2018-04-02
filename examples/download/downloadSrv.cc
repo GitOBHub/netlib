@@ -4,7 +4,7 @@
 
 void DownloadSrv::onConnection(const ConnectionPtr &conn)
 {
-	if (conn->connected())
+	if (conn->isConnected())
 	{
 		std::cout << "Connection UP" << std::endl;
 
@@ -17,7 +17,7 @@ void DownloadSrv::onConnection(const ConnectionPtr &conn)
 
 void DownloadSrv::onMessage(const ConnectionPtr &conn, Buffer &buf)
 {
-	int connFd = conn->getConnFd();
+	int connFd = conn->fd();
 	const int bufsize = 1000000;
 	char sendBuf[bufsize];
 	char filename[256];

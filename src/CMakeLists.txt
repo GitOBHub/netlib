@@ -7,6 +7,7 @@ SET(LIB_SRCS
 	poller.cc
 	channel.cc
 	socket.cc
+	server_multiprocess.cc
 	)
 
 SET(HEADERS
@@ -19,6 +20,7 @@ SET(HEADERS
 	poller.h
 	socket.h
 	noncopyable.h
+	server_multiprocess.h
    )
 
 ADD_LIBRARY(net_static STATIC ${LIB_SRCS})

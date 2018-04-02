@@ -36,7 +36,7 @@ void ChatSrv::print()
 
 void ChatSrv::onMessage(const ConnectionPtr& conn, Buffer &buf)
 {
-	int connFd = conn->getConnFd();
+	int connFd = conn->fd();
 
 //	int flag = ::fcntl(connFd, F_GETFL, 0);
 //	::fcntl(connFd, F_SETFL, flag | O_NONBLOCK);
@@ -67,15 +67,15 @@ void ChatSrv::onMessage(const ConnectionPtr& conn, Buffer &buf)
 			if (errno == EPIPE)
 			{
 				std::cout << "Connection#" << conn->getConnNo() << " - "
-					      << conn->getPeerAddr().toAddrStr() << " -> "
-						  << conn->getLocalAddr().toAddrStr() << " - Recv RST"
+					      << conn->peerAddr().toAddrStr() << " -> "
+						  << conn->localAddr().toAddrStr() << " - Recv RST"
 						  << " - Error: Broken pipe" << std::endl;
 				conn->shutdown();
 			}
 		}
 		else std::cout << "Connection#" << conn->getConnNo() << " - "
-		    		   << conn->getPeerAddr().toAddrStr() << " -> "
-					   << conn->getLocalAddr().toAddrStr() << " - Recv "
+		    		   << conn->peerAddr().toAddrStr() << " -> "
+					   << conn->localAddr().toAddrStr() << " - Recv "
 					   << nrecv << (nrecv == 1 ? " byte, Send " : " bytes, Send ")
 					   << nsend << (nsend == 1 ? " byte" : " bytes") << std::endl;
 	}

@@ -3,8 +3,14 @@
 Channel::Channel(int fd)
 	: fd_(fd) { }
 
+Channel::~Channel()
+{
+//	assert(!eventHandling_);
+}
+
 void Channel::handleEvents()
 {
+	eventHandling_ = true;
 	if ((revents_ & POLLIN) && readCallback_)
 	{
 		readCallback_();
@@ -21,4 +27,5 @@ void Channel::handleEvents()
 	{
 		//TODO
 	}
+	eventHandling_ = false;
 }

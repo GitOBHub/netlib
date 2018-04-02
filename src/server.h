@@ -5,10 +5,11 @@
 
 #include <netdb.h>
 
-#include <loop.h>
+#include <connection.h>
 #include <channel.h>
 #include <inetaddr.h>
 #include <socket.h>
+#include <mutexlock.h>
 
 using namespace std::placeholders;
 
@@ -30,16 +31,17 @@ public:
 protected:
 	virtual void onMessage(const ConnectionPtr& conn, Buffer &buf);
 	virtual void onConnection(const ConnectionPtr& conn);
+	virtual void newConnection();
 
 	Loop &loop_;
-private:
-	void newConnection();
+
 	void removeConnection(const ConnectionPtr &conn);
 
 	InetAddr listenAddr_;
 	Socket socket_;
 	int listenFd_;
 	Channel channel_;
+	pthread_mutex_t mutex_;
 	ConnectionMap connectionMap_;
 	MessageCallback messageCallback_;
 	ConnectionCallback connectionCallback_;

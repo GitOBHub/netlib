@@ -1,4 +1,5 @@
 #include <server.h>
+#include <loop.h>
 
 #include <unistd.h>
 #include <sys/socket.h>
@@ -23,7 +24,7 @@ Server::Server(Loop &lp, const InetAddr &addr)
 void Server::onMessage(const ConnectionPtr& conn, Buffer &buf)
 {
 	ssize_t nrecv = 4;
-	int connFd = conn->getConnFd();
+	int connFd = conn->fd();
 	
 //	int flag = ::fcntl(connFd, F_GETFL, 0);
 //	::fcntl(connFd, F_SETFL, flag | O_NONBLOCK);
@@ -39,13 +40,13 @@ void Server::onMessage(const ConnectionPtr& conn, Buffer &buf)
 
 void Server::onConnection(const ConnectionPtr &conn)
 {
-	if (conn->connected())
-		std::cout << "New connection - " << conn->getPeerAddr().toAddrStr()
-			      << " -> " << conn->getLocalAddr().toAddrStr() << std::endl;
+	if (conn->isConnected())
+		std::cout << "New connection - " << conn->peerAddr().toAddrStr()
+			      << " -> " << conn->localAddr().toAddrStr() << std::endl;
 	else
 		std::cout << "Connection#" << conn->number() << " - "
-	              << conn->getPeerAddr().toAddrStr() << " -> "
-		          << conn->getLocalAddr().toAddrStr()
+	              << conn->peerAddr().toAddrStr() << " -> "
+		          << conn->localAddr().toAddrStr()
 		          << " - Done " << std::endl;
 }
 
@@ -73,15 +74,14 @@ void Server::start()
 	channel_.setReadCallback(std::bind(&Server::newConnection, this));
 	channel_.enableReading();
 	loop_.updateChannel(&channel_);
-	//std::cerr << "updateChannel OK in Server::start()" << std::endl;
 }
 
 void Server::newConnection()
 {
-	//std::cerr << "Server::newConnection() start" << std::endl;
-	int connFd = ::accept(listenFd_, NULL, NULL);
+	int connFd = ::accept4(listenFd_, NULL, NULL, SOCK_NONBLOCK | SOCK_CLOEXEC);
 	if (connFd == -1)
 	{
+		//TODO:
 	}
 	auto conn = std::make_shared<Connection>(connFd, loop_);
 	conn->setMessageCallback(messageCallback_ 
@@ -106,7 +106,7 @@ void Server::removeConnection(const ConnectionPtr &conn)
 {
 	auto n = connectionMap_.erase(conn->number());
 	assert(n == 1);
-//	std::cerr << "After removing conn in Server::removeConnection\n";
+	//FIXME: Connection and its data members like Channel was deleted
 }
 
 	

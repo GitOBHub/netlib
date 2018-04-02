@@ -4,104 +4,96 @@
 
 ssize_t Buffer::readData()
 {
-	ssize_t nrecv = ::recv(fd_, inPtr_,
-						   &buf_[bufsize] - inPtr_, 0);
+	//XXX:effecient way seen in muduo
+	ssize_t nrecv = ::recv(fd_, beginWrite(), writableSize(), 0);
+//	std::cerr << "Buffer::readData() - nrecv = " << nrecv << std::endl;
 	if (nrecv > 0 )
 	{
-		inPtr_ += nrecv;
+		writerIndex_ += nrecv;
 	}
 	else if (nrecv == -1)
 	{
-		std::cerr << "recv: " << strerror(errno)
-				  << std::endl;
+		::perror("::recv");
 	}
     return nrecv;
 }
 
-int Buffer::readableSize()
-{
-	return inPtr_ - outPtr_;
-}
-
-const char *Buffer::peek() const
-{
-	return outPtr_;
-}
-
 const char *Buffer::findCRLF(const char *start) const
 {
-	for (const char *cp = start; cp >= outPtr_ && cp < inPtr_ - 1; ++cp)
-	{
-		if ( *cp == '\r' && *(cp + 1) == '\n')
-		{
-			return cp;
-		}
-	}
-	return NULL;
+	const char *kCRLF = "\r\n";
+	assert(start >= peek() && start <= beginWrite());
+	const char *ret = std::search(start, beginWrite(), kCRLF, kCRLF + 2);
+	return ret != beginWrite() ? ret : NULL;
 }
 
 const char *Buffer::findCRLF() const
 {
-	const char *ret = std::find_if(outPtr_, inPtr_, 
-			[] (char &c) 
-			{ return (c == '\r' && *(&c + 1) == '\n'); });
-	return (ret != inPtr_ ? ret : NULL);
+	const char *ret = std::find_if(peek(), beginWrite(),	//FIXME:std::search() 
+								   [] (const char &c) 
+			                       { return (c == '\r' && *(&c + 1) == '\n'); });
+	return ret != beginWrite() ? ret : NULL;
 }
 
 std::string Buffer::retrieveUntil(const char *end)
 {
-	return retrieveData(end - buf_);
+	assert(end >= peek() && end <= beginWrite());
+	return retrieveData(end - peek());
 }
 
 std::string Buffer::retrieveAllData()
 {
-	std::string data(outPtr_, inPtr_);
-	inPtr_ = outPtr_ = buf_;
+	std::string data(peek(), readableSize());
+	writerIndex_ = readerIndex_ = kInitIndex;
 	return data;
 }
 
 std::string Buffer::retrieveData(int len)
 {
+	//XXX: when arg is size_t, len >= 0, but assert(len <= readableSize())
 	if (len <= 0)
 	{
 		std::string data;
 		return data;
 	}
-	else if (len >= inPtr_ - outPtr_)
+	else if (len >= readableSize())
 	{
-		std::string data(outPtr_, inPtr_);
-		inPtr_ = outPtr_ = buf_;
-		return data;
+		return retrieveAllData();
 	}
 	else
 	{
-		std::string data(outPtr_, len);
-		outPtr_ += len;
-		if (inPtr_ == &buf_[bufsize])
+		std::string data(peek(), len);
+		readerIndex_ += len;
+		if (readerIndex_ == buf_.size())
 		{
-			char *temp = outPtr_;
-			int offset = inPtr_ - outPtr_;
-			inPtr_ -= offset;;
-			outPtr_ = buf_;
-			for (int i = 0; i < (inPtr_ - outPtr_); i++)
-			{		
-				*(outPtr_ + i) = *(temp + i);
-			}
+			//int readSize = readableSize();	
+			//XXX: std::copy()
+			//::memmove(&*buf_.begin(), peek(), readSize); 
+			//readerIndex_ = kInitIndex;
+			//writerIndex_ = readerIndex_ + readSize;
 		}
 		return data;
 	}
 }
 
-bool Buffer::isBufferFull()
+void Buffer::append(const char *data, size_t len)
 {
-	return inPtr_ == &buf_[bufsize];
+	if (len > writableSize())
+	{
+		makeSpace(len);
+	}
+	std::copy(data, data + len, beginWrite());
+	writerIndex_ += len;
 }
-
-void Buffer::append(char *data, int len)
+ 
+void Buffer::makeSpace(size_t len)
 {
-	int n = (len <= &buf_[bufsize] - inPtr_ 
-			 ? len : &buf_[bufsize] - inPtr_);
-	std::copy(data, data + n, inPtr_);
-	inPtr_ += n;
+	int readSize = readableSize();	
+	//XXX: std::copy()
+	::memmove(&*buf_.begin(), peek(), readSize); 
+	readerIndex_ = kInitIndex;
+	writerIndex_ = readerIndex_ + readSize;
+	if (len > writableSize())
+	{
+		buf_.resize(writerIndex_ + len);
+	}
 }
-

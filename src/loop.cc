@@ -4,6 +4,7 @@
 #include <sys/socket.h>
 #include <arpa/inet.h>
 #include <sys/timerfd.h>
+#include <string.h>
 
 #include <iostream>
 

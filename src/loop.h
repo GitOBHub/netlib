@@ -9,8 +9,6 @@
 #include <sys/epoll.h>
 #include <time.h>
 
-#include <connection.h>
-#include <inetaddr.h>
 #include <poller.h>
 #include <channel.h>
 #include <noncopyable.h>
@@ -26,12 +24,6 @@ public:
 
 	void runAfter(time_t tm, const std::function<void(void)> &func);
 
-	void setListenSocket(int fd, const InetAddr &addr) 
-	{ 
-		listenFd_ = fd;
-		listenAddrPtr_ = &addr;
-	};
-
 	void updateChannel(Channel *channel);
 	void removeChannel(Channel *channel);
 
@@ -41,7 +33,6 @@ private:
 	int listenFd_ = -1;
 	int timerFd_;
 	int quit_ = 0;
-	const InetAddr *listenAddrPtr_;
 	std::function<void(void)> timerCallback_;
 };
 

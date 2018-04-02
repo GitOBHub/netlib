@@ -9,8 +9,12 @@ class Socket : noncopyable
 {
 public:
 	Socket();
+	Socket(int fd)
+		: fd_(fd) { }
+	~Socket();
 
 	int fd() const { return fd_; }
+	void shutdownWrite();
 
 private:
 	int fd_;

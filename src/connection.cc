@@ -2,22 +2,26 @@
 #include <loop.h>
 
 Connection::Connection(int fd, Loop &lp) 
-		: connFd_(fd), 
+		: fd_(fd), 
 		  loop_(lp),
 		  inputBuffer_(fd),
-		  channel_(fd)
+		  outputBuffer_(fd),
+		  channel_(fd),
+		  socket_(fd),
+		  state_(kConnected)
 {
 	struct sockaddr_in localAddr, peerAddr;
 	socklen_t localLen = sizeof localAddr;
 	socklen_t peerLen = sizeof peerAddr;
-	getsockname(connFd_, (struct sockaddr *)&localAddr, &localLen);
-	getpeername(connFd_, (struct sockaddr *)&peerAddr, &peerLen);
+	getsockname(fd_, (struct sockaddr *)&localAddr, &localLen);
+	getpeername(fd_, (struct sockaddr *)&peerAddr, &peerLen);
 	localAddr_ = InetAddr(&localAddr);
 	peerAddr_ =	InetAddr(&peerAddr);
 
 	static int connNum = 0;
 	number_ = ++connNum;
 	channel_.setReadCallback(std::bind(&Connection::handleRead, this));
+	channel_.setWriteCallback(std::bind(&Connection::handleWrite, this));
 	channel_.enableReading();
 	loop_.updateChannel(&channel_);
 	//channel_.setWriteCallback(std::bind(&Connection::handleWrite, this));
@@ -27,7 +31,7 @@ Connection::Connection(int fd, Loop &lp)
 Connection::~Connection()
 {
 	loop_.removeChannel(&channel_);
-	::close(connFd_);
+	assert(state_ == kDisconnected);
 }
 	
 void Connection::handleRead()
@@ -35,20 +39,19 @@ void Connection::handleRead()
 //	std::cerr << "handleRead start" << std::endl;
 	ssize_t nread = inputBuffer_.readData();
 
-//FIXME: ConnectionPtr guardThis(shared_from_this());
 //	std::cerr << "nread is " << nread << std::endl;
 	if (nread > 0)
 	{
 //		std::cerr << "append()\n";
 		if (messageCallback_)
 		{
-//			std::cerr << "messageCallback_\n";
+//			std::cerr << "Connection::handleRead() - messageCallback_\n";
 			messageCallback_(shared_from_this(), inputBuffer_);
 		}
 	}
 	else if (nread == 0)
 	{
-		handleClose(shared_from_this());
+		handleClose();
 	}
 	else
 	{
@@ -57,95 +60,102 @@ void Connection::handleRead()
 //	std::cerr << "After handleClose()\n";
 }
 
-void Connection::handleClose(const ConnectionPtr &conn)
+void Connection::handleWrite()
 {
-	shutdown();
+	std::cerr << "handleWrite\n";
+	ssize_t nsend = ::send(fd_, outputBuffer_.peek(), outputBuffer_.readableSize(), 0);
+	if (nsend == -1)
+	{
+		//TODO
+	}
+	else
+	{
+		if (nsend == outputBuffer_.readableSize())
+		{
+			channel_.disableWriting();
+		}
+		outputBuffer_.retrieveData(nsend);
+	}
+}
+
+void Connection::handleClose()
+{
+	assert(state_ == kConnected || state_ == kDisconnecting);
+	state_ = kDisconnected;
 	if (connectionCallback_)
 	{
-		connectionCallback_(conn);
+		connectionCallback_(shared_from_this());
 	}
-	if (closeCallback_)
+	std::weak_ptr<Connection> weakConn = shared_from_this();
 	{
-		//closeCallback_(guardThis);
-//		std::cerr << "After closeCalback_\n";
+		auto conn = weakConn.lock();
+		if (conn)
+		{
+			std::cerr << "Connection existent before closeCallback_()\n";
+		}
 	}
-	closeCallback_(conn);
+	closeCallback_(shared_from_this());
+	auto conn = weakConn.lock();
+	if (conn)
+	{
+		std::cerr << "Connection existent after closeCallback)()\n";
+	} 
 }
 
 void Connection::shutdown()
 {
-	if (isConnected_)
+	if (state_ == kConnected)
 	{
-		::shutdown(connFd_, SHUT_WR);
-		isConnected_ = 0;
+		socket_.shutdownWrite();
+		state_ = kDisconnecting;
 	}
-}
-
-int Connection::getConnFd() const 
-{
-	return connFd_; 
-} 
-	
-int Connection::connected() const
-{
-	return isConnected_; 
-}
-
-
-int Connection::disconnected() const
-{
-	return isConnected_ ? 0 : 1; 
-}
-
-const InetAddr &Connection::getPeerAddr() const
-{
-	return peerAddr_; 
-}
-
-const InetAddr &Connection::getLocalAddr() const
-{
-	return localAddr_; 
-}
-
-Buffer &Connection::getBuffer()	
-{
-	return inputBuffer_;
-}
-
-bool Connection::isBufferWritable()
-{
-	return !inputBuffer_.isBufferFull();
 }
 
 void Connection::send(const std::string &data)
 {
-	int sendLen = 0;
-	char sendBuf[BUFSIZ];
-	for (auto c : data)
-	{
-		sendBuf[sendLen++] = c;
-	}
+	send(data.data(), data.size());
+}
+
+void Connection::send(const void *data, size_t len)
+{
+	size_t remaining = len;
+	ssize_t nsend = 0;
+	bool savedErrno = 0;
+	const char *sendBuf = static_cast<const char *>(data);
 
 	if (::signal(SIGPIPE, SIG_IGN) == SIG_ERR)
 		std::cerr << "signal: SIGPIPE - " 
 				  << ::strerror(errno) << std::endl;
 
-	ssize_t nsend = ::send(connFd_, sendBuf, sendLen, 0);
-	if (nsend == -1)
-	{
-		if (errno == EPIPE)
+	if (!channel_.isWriting() && outputBuffer_.readableSize() == 0)
+	{	
+		nsend = ::send(fd_, sendBuf, remaining, 0);
+		std::cerr << "Connection::send() - nsend returned by ::send() is " 
+				  << nsend << std::endl;
+		if (nsend == -1)
 		{
-			std::cout << "Connection#" << number_ << " - "
-					  << peerAddr_.toAddrStr() << " -> "
-					  << localAddr_.toAddrStr() << " - Recv RST"
-					  << " - Error: Broken pipe" << std::endl;
-			shutdown();
+			if (errno == EPIPE || errno == ECONNRESET)
+			{
+				savedErrno = 1;
+			//	std::cerr << "Connection#" << number_ << " - "
+			//			  << peerAddr_.toAddrStr() << " -> "
+			//			  << localAddr_.toAddrStr() << " - Recv RST"
+			//			  << " - Error: Broken pipe" << std::endl;
+			}
+		}
+		else
+		{
+			remaining -= nsend;
 		}
 	}
-	else std::cout << "Connection#" << number_ << " - "
-	 	           << peerAddr_.toAddrStr() << " -> "
-			       << localAddr_.toAddrStr()
-				   << " - Send " << nsend 
-				   << (nsend == 1 ? " byte" : " bytes") 
-				   << std::endl;
+
+	if (remaining > 0 && !savedErrno)
+	{
+		outputBuffer_.append(sendBuf + nsend, remaining);
+		if (!channel_.isWriting())
+		{
+			channel_.enableWriting();
+			loop_.updateChannel(&channel_);
+		}
+	}
 }

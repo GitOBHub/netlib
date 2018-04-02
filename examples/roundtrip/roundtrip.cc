@@ -22,7 +22,7 @@ public:
 
 	void onMessage(const ConnectionPtr& conn, Buffer &buf) override
 	{
-		int connFd = conn->getConnFd();
+		int connFd = conn->fd();
 
 	//	int flag = ::fcntl(connFd, F_GETFL, 0);
 	//	::fcntl(connFd, F_SETFL, flag | O_NONBLOCK);
